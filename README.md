@@ -4,7 +4,7 @@ platforms: .Net
 author: anudeepsharma
 ---
 
-#Getting Started with Service - Service Bus Publish Subscribe Basic - in .Net #
+# Getting Started with Service - Service Bus Publish Subscribe Basic - in .Net #
 
           Azure Service Bus basic scenario sample.
           - Create namespace.
