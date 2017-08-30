@@ -1,0 +1,2 @@
+C:\Sources\dotnet-samples\service-bus-dotnet-manage-publish-subscribe-with-basic-features\bin\Debug\netstandard1.6\ServiceBusPublishSubscribeBasic.deps.json
+C:\Sources\dotnet-samples\service-bus-dotnet-manage-publish-subscribe-with-basic-features\obj\Debug\netstandard1.6\ServiceBusPublishSubscribeBasic.csproj.CoreCompileInputs.cache
