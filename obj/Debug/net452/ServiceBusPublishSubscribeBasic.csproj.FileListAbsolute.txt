@@ -1,4 +1,0 @@
-C:\Sources\dotnet-samples\service-bus-dotnet-manage-publish-subscribe-with-basic-features\bin\Debug\net452\ServiceBusPublishSubscribeBasic.runtimeconfig.json
-C:\Sources\dotnet-samples\service-bus-dotnet-manage-publish-subscribe-with-basic-features\bin\Debug\net452\ServiceBusPublishSubscribeBasic.runtimeconfig.dev.json
-C:\Sources\dotnet-samples\service-bus-dotnet-manage-publish-subscribe-with-basic-features\obj\Debug\net452\ServiceBusPublishSubscribeBasic.csproj.ServiceBusPublishSubscribeBasic.exe.config
-C:\Sources\dotnet-samples\service-bus-dotnet-manage-publish-subscribe-with-basic-features\obj\Debug\net452\ServiceBusPublishSubscribeBasic.csproj.CoreCompileInputs.cache
