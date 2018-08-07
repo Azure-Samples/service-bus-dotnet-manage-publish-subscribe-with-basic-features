@@ -1,10 +1,10 @@
 ---
-services: Service
-platforms: .Net
+services: Service-Bus
+platforms: dotnet
 author: anudeepsharma
 ---
 
-# Getting Started with Service - Service Bus Publish Subscribe Basic - in .Net #
+# Getting started on managing Service Bus Publish-Subscribe with basic features in C# #
 
           Azure Service Bus basic scenario sample.
           - Create namespace.
@@ -26,7 +26,7 @@ author: anudeepsharma
 
 To run this sample:
 
-Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-sdk-for-net/blob/Fluent/AUTH.md).
+Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-libraries-for-java/blob/master/AUTH.md).
 
     git clone https://github.com/Azure-Samples/service-bus-dotnet-manage-publish-subscribe-with-basic-features.git
 
