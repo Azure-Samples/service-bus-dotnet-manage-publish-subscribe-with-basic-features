@@ -4,27 +4,27 @@ languages:
 - csharp
 products:
 - azure
-services: Service-Bus
-platforms: dotnet
-author: yaohaizh
+extensions:
+- services: Service-Bus
+- platforms: dotnet
 ---
 
 # Getting started on managing Service Bus Publish-Subscribe with basic features in C# #
 
-          Azure Service Bus basic scenario sample.
-          - Create namespace.
-          - Create a topic.
-          - Update topic with new size and a new ServiceBus subscription.
-          - Create another ServiceBus subscription in the topic.
-          - List topic
-          - List ServiceBus subscriptions
-          - Get default authorization rule.
-          - Regenerate the keys in the authorization rule.
-          - Send a message to topic using Data plan sdk for Service Bus.
-          - Delete one ServiceBus subscription as part of update of topic.
-          - Delete another ServiceBus subscription.
-          - Delete topic
-          - Delete namespace
+ Azure Service Bus basic scenario sample.
+ - Create namespace.
+ - Create a topic.
+ - Update topic with new size and a new ServiceBus subscription.
+ - Create another ServiceBus subscription in the topic.
+ - List topic
+ - List ServiceBus subscriptions
+ - Get default authorization rule.
+ - Regenerate the keys in the authorization rule.
+ - Send a message to topic using Data plan sdk for Service Bus.
+ - Delete one ServiceBus subscription as part of update of topic.
+ - Delete another ServiceBus subscription.
+ - Delete topic
+ - Delete namespace
 
 
 ## Running this Sample ##
