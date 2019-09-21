@@ -7,6 +7,7 @@ products:
 extensions:
 - services: Service-Bus
 - platforms: dotnet
+description: "Azure Service Bus basic scenario sample."
 ---
 
 # Getting started on managing Service Bus Publish-Subscribe with basic features in C# #
