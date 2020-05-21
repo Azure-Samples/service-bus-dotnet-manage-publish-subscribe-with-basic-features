@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
@@ -11,6 +10,7 @@ using Microsoft.Azure.Management.ServiceBus.Fluent.Models;
 using System;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace ServiceBusPublishSubscribeBasic
 {
@@ -98,7 +98,7 @@ namespace ServiceBusPublishSubscribeBasic
                 var topics = serviceBusNamespace.Topics.List();
                 Utilities.Log("Number of topics in namespace :" + topics.Count());
 
-                foreach (var topicInNamespace  in  topics)
+                foreach (var topicInNamespace in topics)
                 {
                     Utilities.Print(topicInNamespace);
                 }
@@ -109,7 +109,7 @@ namespace ServiceBusPublishSubscribeBasic
                 var subscriptions = topic.Subscriptions.List();
                 Utilities.Log("Number of subscriptions to topic: " + subscriptions.Count());
 
-                foreach (var subscription  in  subscriptions)
+                foreach (var subscription in subscriptions)
                 {
                     Utilities.Print(subscription);
                 }
@@ -121,7 +121,7 @@ namespace ServiceBusPublishSubscribeBasic
                 Utilities.Log("Number of authorization rule for namespace :" + namespaceAuthorizationRules.Count());
 
 
-                foreach (var namespaceAuthorizationRule in  namespaceAuthorizationRules)
+                foreach (var namespaceAuthorizationRule in namespaceAuthorizationRules)
                 {
                     Utilities.Print(namespaceAuthorizationRule);
                 }
@@ -136,7 +136,8 @@ namespace ServiceBusPublishSubscribeBasic
 
                 //=============================================================
                 // Send a message to topic.
-                Utilities.SendMessageToTopic(keys.PrimaryConnectionString, topicName, "Hello");
+                Task.Run(() => Utilities.SendMessageToTopic(keys.PrimaryConnectionString, topicName, "Hello")).Wait();
+
                 //=============================================================
                 // Delete a queue and namespace
                 Utilities.Log("Deleting subscription " + subscription1Name + " in topic " + topicName + " via update flow...");
@@ -183,7 +184,7 @@ namespace ServiceBusPublishSubscribeBasic
                 // Authenticate
                 var credentials = SdkContext.AzureCredentialsFactory.FromFile(Environment.GetEnvironmentVariable("AZURE_AUTH_LOCATION"));
 
-                var azure = Azure
+                var azure = Microsoft.Azure.Management.Fluent.Azure
                     .Configure()
                     .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                     .Authenticate(credentials)
