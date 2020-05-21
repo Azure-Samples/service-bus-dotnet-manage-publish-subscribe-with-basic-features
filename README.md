@@ -43,6 +43,7 @@ setx AZURE_AUTH_LOCATION "<YourAuthFilePath>"
 ```
 
 ## Run the application
+
 First, clone the repository on your machine:
 
 ```bash
