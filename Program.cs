@@ -9,7 +9,6 @@ using Microsoft.Azure.Management.ServiceBus.Fluent;
 using Microsoft.Azure.Management.ServiceBus.Fluent.Models;
 using System;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace ServiceBusPublishSubscribeBasic
@@ -39,6 +38,7 @@ namespace ServiceBusPublishSubscribeBasic
             var topicName = SdkContext.RandomResourceName("topic_", 24);
             var subscription1Name = SdkContext.RandomResourceName("sub1_", 24);
             var subscription2Name = SdkContext.RandomResourceName("sub2_", 24);
+
             try
             {
                 //============================================================
@@ -152,9 +152,11 @@ namespace ServiceBusPublishSubscribeBasic
                 {
                     azure.ServiceBusNamespaces.DeleteById(serviceBusNamespace.Id);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
+                    Utilities.Log("Unexpected error occured: " + e.Message);
                 }
+
                 Utilities.Log("Deleted namespace " + namespaceName + "...");
             }
             finally
