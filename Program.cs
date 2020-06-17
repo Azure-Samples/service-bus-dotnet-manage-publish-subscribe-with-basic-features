@@ -136,7 +136,7 @@ namespace ServiceBusPublishSubscribeBasic
 
                 //=============================================================
                 // Send a message to topic.
-                Task.Run(() => Utilities.SendMessageToTopic(keys.PrimaryConnectionString, topicName, "Hello")).Wait();
+                Utilities.SendMessageToTopic(keys.PrimaryConnectionString, topicName, "Hello");
 
                 //=============================================================
                 // Delete a queue and namespace
