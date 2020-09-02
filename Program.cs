@@ -31,7 +31,7 @@ namespace ServiceBusPublishSubscribeBasic
          * - Delete topic
          * - Delete namespace
          */
-        public static void RunSample(IAzure azure)
+        public static async Task RunSample(IAzure azure)
         {
             var rgName = SdkContext.RandomResourceName("rgSB02_", 24);
             var namespaceName = SdkContext.RandomResourceName("namespace", 20);
@@ -136,7 +136,7 @@ namespace ServiceBusPublishSubscribeBasic
 
                 //=============================================================
                 // Send a message to topic.
-                Utilities.SendMessageToTopic(keys.PrimaryConnectionString, topicName, "Hello");
+                await Utilities.SendMessageToTopicAsync(keys.PrimaryConnectionString, topicName, "Hello");
 
                 //=============================================================
                 // Delete a queue and namespace
@@ -178,7 +178,7 @@ namespace ServiceBusPublishSubscribeBasic
             }
         }
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             try
             {
@@ -195,7 +195,7 @@ namespace ServiceBusPublishSubscribeBasic
                 // Print selected subscription
                 Utilities.Log("Selected subscription: " + azure.SubscriptionId);
 
-                RunSample(azure);
+                await RunSample(azure);
             }
             catch (Exception e)
             {
