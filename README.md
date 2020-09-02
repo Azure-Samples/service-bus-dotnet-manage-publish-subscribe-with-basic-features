@@ -30,7 +30,7 @@ az ad sp create-for-rbac --sdk-auth > my.azureauth
 
 ### Set the auth file path to an environment variable
 
-Follow one of the examples below depending on your operating system to create the environment variable. If using Windows close your opened IDE or shell and restart it to be able to read the environment variable.
+Follow one of the examples below depending on your operating system to create the environment variable. If using Windows close your opened IDE or shell and restart it to make environment variable avaliable.
 
 Linux
 
