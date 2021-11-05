@@ -20,12 +20,12 @@ extensions:
  - List ServiceBus subscriptions
  - Get default authorization rule.
  - Regenerate the keys in the authorization rule.
- - Send a message to topic using Data plan sdk for Service Bus.
  - Delete one ServiceBus subscription as part of update of topic.
  - Delete another ServiceBus subscription.
  - Delete topic
  - Delete namespace
 
+ For more on how to use Azure Service Bus see the [samples for sending and receiving messages](https://docs.microsoft.com/samples/azure/azure-sdk-for-net/azuremessagingservicebus-samples/).
 
 ## Running this Sample ##
 
