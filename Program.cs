@@ -56,6 +56,7 @@ namespace ServiceBusPublishSubscribeBasic
                 var data = new ServiceBusNamespaceData(AzureLocation.WestUS)
                 {
                     Sku = new ServiceBusSku(ServiceBusSkuName.Standard),
+                    Location = AzureLocation.WestUS
                 };
                 var serviceBusNamespace = (await namespaceCollection.CreateOrUpdateAsync(WaitUntil.Completed, nameSpaceName, data)).Value;
                 Utilities.Log("Created service bus " + serviceBusNamespace.Data.Name);
@@ -63,7 +64,6 @@ namespace ServiceBusPublishSubscribeBasic
                 //============================================================
               
                 // Create a topic in namespace
-              
                 var topicName = Utilities.CreateRandomName("topic_");
                 Utilities.Log("Creating topic " + topicName + " in namespace " + nameSpaceName + "...");
                 var topicCollection = serviceBusNamespace.GetServiceBusTopics();
@@ -72,12 +72,11 @@ namespace ServiceBusPublishSubscribeBasic
                     MaxSizeInMegabytes = 2048,
                 };
                 var topic = (await topicCollection.CreateOrUpdateAsync(WaitUntil.Completed, topicName, topicData)).Value;
-                Utilities.Log("Created second queue in namespace");
+                Utilities.Log("Created topic in namespace with name : " +topic.Data.Name);
 
                 //============================================================
 
                 // Get and update topic with new size and a subscription
-
                 Utilities.Log("Updating topic " + topicName + " with new size and a subscription...");
                 var getTopic = (serviceBusNamespace.GetServiceBusTopic(topicName)).Value;
                 var updateData = new ServiceBusTopicData()
@@ -94,13 +93,13 @@ namespace ServiceBusPublishSubscribeBasic
                 {
                     RequiresSession = true,
                 };
-                _ = await subscription1Collection.CreateOrUpdateAsync(WaitUntil.Completed, subscription1Name, subscription1Data);
+                var subscription1 = (await subscription1Collection.CreateOrUpdateAsync(WaitUntil.Completed, subscription1Name, subscription1Data)).Value;
+                Utilities.Log("Created subscription " + subscription1.Data.Name + " in topic " + topic.Data.Name + "...");
                 Utilities.Log("Updated topic to change its size in MB along with a subscription");
 
                 //============================================================
                 
                 // Create a subscription
-               
                 var subscription2Name = Utilities.CreateRandomName("subs2_");
                 Utilities.Log("Adding second subscription" + subscription2Name + " to topic " + topicName + "...");
                 var subscription2Data = new ServiceBusSubscriptionData()
@@ -108,34 +107,30 @@ namespace ServiceBusPublishSubscribeBasic
                     RequiresSession = true,
                     AutoDeleteOnIdle = TimeSpan.FromMinutes(10),
                 };
-                _ = await subscription1Collection.CreateOrUpdateAsync(WaitUntil.Completed, subscription2Name, subscription2Data);
-                Utilities.Log("Added second subscription" + subscription2Name + " to topic " + topicName + "...");
+                var subscription2 = (await subscription1Collection.CreateOrUpdateAsync(WaitUntil.Completed, subscription2Name, subscription2Data)).Value;
+                Utilities.Log("Added second subscription" + subscription2.Data.Name + " to topic " + topicName + "...");
 
                 //=============================================================
 
                 // List topics in namespaces
-
                 var topics = serviceBusNamespace.GetServiceBusTopics().ToList();
                 Utilities.Log("Number of topics in namespace :" + topics.Count());
 
                 //=============================================================
 
                 // List all subscriptions for topic in namespaces
-               
                 var subscriptions = topic.GetServiceBusSubscriptions().ToList();
                 Utilities.Log("Number of subscriptions to topic: " + subscriptions.Count());
 
                 //=============================================================
 
                 // Get connection string for default authorization rule of namespace
-              
                 var namespaceAuthorizationRules = serviceBusNamespace.GetServiceBusNamespaceAuthorizationRules().ToList();
                 Utilities.Log("Number of authorization rule for namespace :" + namespaceAuthorizationRules.Count());
                
                 //=============================================================
 
-                // Delete a queue and namespace
-
+                // Delete a topic and namespace
                 Utilities.Log("Deleting subscription " + subscription1Name + " in topic " + topicName + " via update flow...");
                 _ = await topic.GetServiceBusSubscription(subscription1Name).Value.DeleteAsync(WaitUntil.Completed);
                 Utilities.Log("Deleted subscription " + subscription1Name);
