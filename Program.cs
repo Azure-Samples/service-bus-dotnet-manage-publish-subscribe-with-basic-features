@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-
-using System;
-using System.Linq;
-using System.Text;
-using Microsoft.Azure.Management.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-using Microsoft.Azure.Management.ServiceBus.Fluent;
-using Microsoft.Azure.Management.ServiceBus.Fluent.Models;
+using Azure;
+using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager.Samples.Common;
+using Azure.ResourceManager.ServiceBus;
+using Azure.ResourceManager.ServiceBus.Models;
 
 namespace ServiceBusPublishSubscribeBasic
 {
@@ -30,276 +29,160 @@ namespace ServiceBusPublishSubscribeBasic
          * - Delete topic
          * - Delete namespace
          */
-        public static void RunSample(IAzure azure)
+        private static ResourceIdentifier? _resourceGroupId = null;
+        public static async Task RunSample(ArmClient client)
         {
-            var rgName = SdkContext.RandomResourceName("rgSB02_", 24);
-            var namespaceName = SdkContext.RandomResourceName("namespace", 20);
-            var topicName = SdkContext.RandomResourceName("topic_", 24);
-            var subscription1Name = SdkContext.RandomResourceName("sub1_", 24);
-            var subscription2Name = SdkContext.RandomResourceName("sub2_", 24);
             try
             {
                 //============================================================
+
                 // Create a namespace.
+               
+                // Get default subscription
+                SubscriptionResource subscription = await client.GetDefaultSubscriptionAsync();
 
-                Console.WriteLine("Creating name space " + namespaceName + " in resource group " + rgName + "...");
+                // Create a resource group in the USWest region
+                var rgName = Utilities.CreateRandomName("rgSB02_");
+                Utilities.Log("Creating resource group with name : " + rgName );
+                var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, rgName, new ResourceGroupData(AzureLocation.WestUS));
+                var resourceGroup = rgLro.Value;
+                _resourceGroupId = resourceGroup.Id;
+                Utilities.Log("Created resource group with name: " + resourceGroup.Data.Name + "...");
 
-                var serviceBusNamespace = azure.ServiceBusNamespaces
-                        .Define(namespaceName)
-                        .WithRegion(Region.USWest)
-                        .WithNewResourceGroup(rgName)
-                        .WithSku(NamespaceSku.Standard)
-                        .Create();
-
-                Console.WriteLine("Created service bus " + serviceBusNamespace.Name);
-                PrintNamespace(serviceBusNamespace);
+                //create namespace and wait for completion
+                var nameSpaceName = Utilities.CreateRandomName("nameSpace");
+                Utilities.Log("Creating namespace " + nameSpaceName + " in resource group " + rgName + "...");
+                var namespaceCollection = resourceGroup.GetServiceBusNamespaces();
+                var data = new ServiceBusNamespaceData(AzureLocation.WestUS)
+                {
+                    Sku = new ServiceBusSku(ServiceBusSkuName.Standard),
+                    Location = AzureLocation.WestUS
+                };
+                var serviceBusNamespace = (await namespaceCollection.CreateOrUpdateAsync(WaitUntil.Completed, nameSpaceName, data)).Value;
+                Utilities.Log("Created service bus " + serviceBusNamespace.Data.Name);
 
                 //============================================================
+              
                 // Create a topic in namespace
-
-                Console.WriteLine("Creating topic " + topicName + " in namespace " + namespaceName + "...");
-
-                var topic = serviceBusNamespace.Topics.Define(topicName)
-                        .WithSizeInMB(2048)
-                        .Create();
-
-                Console.WriteLine("Created second queue in namespace");
-
-                PrintTopic(topic);
+                var topicName = Utilities.CreateRandomName("topic_");
+                Utilities.Log("Creating topic " + topicName + " in namespace " + nameSpaceName + "...");
+                var topicCollection = serviceBusNamespace.GetServiceBusTopics();
+                var topicData = new ServiceBusTopicData()
+                {
+                    MaxSizeInMegabytes = 2048,
+                };
+                var topic = (await topicCollection.CreateOrUpdateAsync(WaitUntil.Completed, topicName, topicData)).Value;
+                Utilities.Log("Created topic in namespace with name : " +topic.Data.Name);
 
                 //============================================================
+
                 // Get and update topic with new size and a subscription
-                Console.WriteLine("Updating topic " + topicName + " with new size and a subscription...");
-                topic = serviceBusNamespace.Topics.GetByName(topicName);
-                topic = topic.Update()
-                        .WithNewSubscription(subscription1Name)
-                        .WithSizeInMB(3072)
-                        .Apply();
+                Utilities.Log("Updating topic " + topicName + " with new size and a subscription...");
+                var getTopic = (serviceBusNamespace.GetServiceBusTopic(topicName)).Value;
+                var updateData = new ServiceBusTopicData()
+                {
+                    MaxSizeInMegabytes = 3072,
+                };
+                _ = await getTopic.UpdateAsync(WaitUntil.Completed, updateData);
 
-                Console.WriteLine("Updated topic to change its size in MB along with a subscription");
+                // Create a service bus subscription in the topic.
+                var subscription1Name = Utilities.CreateRandomName("subs1_");
+                Utilities.Log("Creating subscription " + subscription1Name + " in topic " + topic.Data.Name + "...");
+                var subscription1Collection = topic.GetServiceBusSubscriptions();
+                var subscription1Data = new ServiceBusSubscriptionData()
+                {
+                    RequiresSession = true,
+                };
+                var subscription1 = (await subscription1Collection.CreateOrUpdateAsync(WaitUntil.Completed, subscription1Name, subscription1Data)).Value;
+                Utilities.Log("Created subscription " + subscription1.Data.Name + " in topic " + topic.Data.Name + "...");
+                Utilities.Log("Updated topic to change its size in MB along with a subscription");
 
-                PrintTopic(topic);
-
-                var firstSubscription = topic.Subscriptions.GetByName(subscription1Name);
-                PrintSubscription(firstSubscription);
                 //============================================================
+                
                 // Create a subscription
-                Console.WriteLine("Adding second subscription" + subscription2Name + " to topic " + topicName + "...");
-                var secondSubscription = topic.Subscriptions.Define(subscription2Name).WithDeleteOnIdleDurationInMinutes(10).Create();
-                Console.WriteLine("Added second subscription" + subscription2Name + " to topic " + topicName + "...");
-
-                PrintSubscription(secondSubscription);
+                var subscription2Name = Utilities.CreateRandomName("subs2_");
+                Utilities.Log("Adding second subscription" + subscription2Name + " to topic " + topicName + "...");
+                var subscription2Data = new ServiceBusSubscriptionData()
+                {
+                    RequiresSession = true,
+                    AutoDeleteOnIdle = TimeSpan.FromMinutes(10),
+                };
+                var subscription2 = (await subscription1Collection.CreateOrUpdateAsync(WaitUntil.Completed, subscription2Name, subscription2Data)).Value;
+                Utilities.Log("Added second subscription" + subscription2.Data.Name + " to topic " + topicName + "...");
 
                 //=============================================================
+
                 // List topics in namespaces
-
-                var topics = serviceBusNamespace.Topics.List();
-                Console.WriteLine("Number of topics in namespace :" + topics.Count());
-
-                foreach (var topicInNamespace  in  topics)
-                {
-                    PrintTopic(topicInNamespace);
-                }
+                var topics = serviceBusNamespace.GetServiceBusTopics().ToList();
+                Utilities.Log("Number of topics in namespace :" + topics.Count());
 
                 //=============================================================
+
                 // List all subscriptions for topic in namespaces
-
-                var subscriptions = topic.Subscriptions.List();
-                Console.WriteLine("Number of subscriptions to topic: " + subscriptions.Count());
-
-                foreach (var subscription  in  subscriptions)
-                {
-                    PrintSubscription(subscription);
-                }
+                var subscriptions = topic.GetServiceBusSubscriptions().ToList();
+                Utilities.Log("Number of subscriptions to topic: " + subscriptions.Count());
 
                 //=============================================================
+
                 // Get connection string for default authorization rule of namespace
-
-                var namespaceAuthorizationRules = serviceBusNamespace.AuthorizationRules.List();
-                Console.WriteLine("Number of authorization rule for namespace :" + namespaceAuthorizationRules.Count());
-
-
-                foreach (var namespaceAuthorizationRule in  namespaceAuthorizationRules)
-                {
-                    PrintNamespaceAuthorizationRule(namespaceAuthorizationRule);
-                }
-
-                Console.WriteLine("Getting keys for authorization rule ...");
-
-                var keys = namespaceAuthorizationRules.FirstOrDefault().GetKeys();
-                PrintKeys(keys);
-                Console.WriteLine("Regenerating secondary key for authorization rule ...");
-                keys = namespaceAuthorizationRules.FirstOrDefault().RegenerateKey(Policykey.SecondaryKey);
-                PrintKeys(keys);
-
+                var namespaceAuthorizationRules = serviceBusNamespace.GetServiceBusNamespaceAuthorizationRules().ToList();
+                Utilities.Log("Number of authorization rule for namespace :" + namespaceAuthorizationRules.Count());
+               
                 //=============================================================
-                // Delete a queue and namespace
-                Console.WriteLine("Deleting subscription " + subscription1Name + " in topic " + topicName + " via update flow...");
-                topic = topic.Update().WithoutSubscription(subscription1Name).Apply();
-                Console.WriteLine("Deleted subscription " + subscription1Name + "...");
 
-                Console.WriteLine("Number of subscriptions in the topic after deleting first subscription: " + topic.SubscriptionCount);
-
-                Console.WriteLine("Deleting namespace " + namespaceName + "...");
-                // This will delete the namespace and queue within it.
+                // Delete a topic and namespace
+                Utilities.Log("Deleting subscription " + subscription1Name + " in topic " + topicName + " via update flow...");
+                _ = await topic.GetServiceBusSubscription(subscription1Name).Value.DeleteAsync(WaitUntil.Completed);
+                Utilities.Log("Deleted subscription " + subscription1Name);
+                Utilities.Log("Number of subscriptions in the topic after deleting first subscription: " + topic.GetServiceBusSubscriptions().ToList().Count);
+                Utilities.Log("Deleting namespace " + nameSpaceName + "...");
                 try
                 {
-                    azure.ServiceBusNamespaces.DeleteById(serviceBusNamespace.Id);
+                    _ = serviceBusNamespace.DeleteAsync(WaitUntil.Completed);
                 }
                 catch (Exception)
                 {
                 }
-                Console.WriteLine("Deleted namespace " + namespaceName + "...");
+                Utilities.Log("Deleted namespace " + nameSpaceName);
             }
             finally
             {
                 try
                 {
-                    Console.WriteLine("Deleting Resource Group: " + rgName);
-                    azure.ResourceGroups.BeginDeleteByName(rgName);
-                    Console.WriteLine("Deleted Resource Group: " + rgName);
+                    if (_resourceGroupId is not null)
+                    {
+                        Utilities.Log($"Deleting Resource Group: {_resourceGroupId}");
+                        await client.GetResourceGroupResource(_resourceGroupId).DeleteAsync(WaitUntil.Completed);
+                        Utilities.Log($"Deleted Resource Group: {_resourceGroupId}");
+                    }
                 }
                 catch (NullReferenceException)
                 {
-                    Console.WriteLine("Did not create any resources in Azure. No clean up is necessary");
+                    Utilities.Log("Did not create any resources in Azure. No clean up is necessary");
                 }
                 catch (Exception g)
                 {
-                    Console.WriteLine(g);
+                    Utilities.Log(g);
                 }
             }
         }
-
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             try
             {
-                //=================================================================
-                // Authenticate
-                var credentials = SdkContext.AzureCredentialsFactory.FromFile(Environment.GetEnvironmentVariable("AZURE_AUTH_LOCATION"));
-
-                var azure = Azure
-                    .Configure()
-                    .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
-                    .Authenticate(credentials)
-                    .WithDefaultSubscription();
-
-                // Print selected subscription
-                Console.WriteLine("Selected subscription: " + azure.SubscriptionId);
-
-                RunSample(azure);
+                var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+                var clientSecret = Environment.GetEnvironmentVariable("CLIENT_SECRET");
+                var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
+                var subscription = Environment.GetEnvironmentVariable("SUBSCRIPTION_ID");
+                ClientSecretCredential credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+                ArmClient client = new ArmClient(credential, subscription);
+                await RunSample(client);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Utilities.Log(e);
             }
-        }
-
-        static void PrintNamespace(IServiceBusNamespace serviceBusNamespace)
-        {
-            var builder = new StringBuilder()
-                    .Append("Service bus Namespace: ").Append(serviceBusNamespace.Id)
-                    .Append("\n\tName: ").Append(serviceBusNamespace.Name)
-                    .Append("\n\tRegion: ").Append(serviceBusNamespace.RegionName)
-                    .Append("\n\tResourceGroupName: ").Append(serviceBusNamespace.ResourceGroupName)
-                    .Append("\n\tCreatedAt: ").Append(serviceBusNamespace.CreatedAt)
-                    .Append("\n\tUpdatedAt: ").Append(serviceBusNamespace.UpdatedAt)
-                    .Append("\n\tDnsLabel: ").Append(serviceBusNamespace.DnsLabel)
-                    .Append("\n\tFQDN: ").Append(serviceBusNamespace.Fqdn)
-                    .Append("\n\tSku: ")
-                    .Append("\n\t\tCapacity: ").Append(serviceBusNamespace.Sku.Capacity)
-                    .Append("\n\t\tSkuName: ").Append(serviceBusNamespace.Sku.Name)
-                    .Append("\n\t\tTier: ").Append(serviceBusNamespace.Sku.Tier);
-
-            Console.WriteLine(builder.ToString());
-        }
-
-        static void PrintTopic(ITopic topic)
-        {
-            StringBuilder builder = new StringBuilder()
-                    .Append("Service bus topic: ").Append(topic.Id)
-                    .Append("\n\tName: ").Append(topic.Name)
-                    .Append("\n\tResourceGroupName: ").Append(topic.ResourceGroupName)
-                    .Append("\n\tCreatedAt: ").Append(topic.CreatedAt)
-                    .Append("\n\tUpdatedAt: ").Append(topic.UpdatedAt)
-                    .Append("\n\tAccessedAt: ").Append(topic.AccessedAt)
-                    .Append("\n\tActiveMessageCount: ").Append(topic.ActiveMessageCount)
-                    .Append("\n\tCurrentSizeInBytes: ").Append(topic.CurrentSizeInBytes)
-                    .Append("\n\tDeadLetterMessageCount: ").Append(topic.DeadLetterMessageCount)
-                    .Append("\n\tDefaultMessageTtlDuration: ").Append(topic.DefaultMessageTtlDuration)
-                    .Append("\n\tDuplicateMessageDetectionHistoryDuration: ").Append(topic.DuplicateMessageDetectionHistoryDuration)
-                    .Append("\n\tIsBatchedOperationsEnabled: ").Append(topic.IsBatchedOperationsEnabled)
-                    .Append("\n\tIsDuplicateDetectionEnabled: ").Append(topic.IsDuplicateDetectionEnabled)
-                    .Append("\n\tIsExpressEnabled: ").Append(topic.IsExpressEnabled)
-                    .Append("\n\tIsPartitioningEnabled: ").Append(topic.IsPartitioningEnabled)
-                    .Append("\n\tDeleteOnIdleDurationInMinutes: ").Append(topic.DeleteOnIdleDurationInMinutes)
-                    .Append("\n\tMaxSizeInMB: ").Append(topic.MaxSizeInMB)
-                    .Append("\n\tScheduledMessageCount: ").Append(topic.ScheduledMessageCount)
-                    .Append("\n\tStatus: ").Append(topic.Status)
-                    .Append("\n\tTransferMessageCount: ").Append(topic.TransferMessageCount)
-                    .Append("\n\tSubscriptionCount: ").Append(topic.SubscriptionCount)
-                    .Append("\n\tTransferDeadLetterMessageCount: ").Append(topic.TransferDeadLetterMessageCount);
-
-            Console.WriteLine(builder.ToString());
-        }
-
-        static void PrintSubscription(Microsoft.Azure.Management.ServiceBus.Fluent.ISubscription serviceBusSubscription)
-        {
-            StringBuilder builder = new StringBuilder()
-                    .Append("Service bus subscription: ").Append(serviceBusSubscription.Id)
-                    .Append("\n\tName: ").Append(serviceBusSubscription.Name)
-                    .Append("\n\tResourceGroupName: ").Append(serviceBusSubscription.ResourceGroupName)
-                    .Append("\n\tCreatedAt: ").Append(serviceBusSubscription.CreatedAt)
-                    .Append("\n\tUpdatedAt: ").Append(serviceBusSubscription.UpdatedAt)
-                    .Append("\n\tAccessedAt: ").Append(serviceBusSubscription.AccessedAt)
-                    .Append("\n\tActiveMessageCount: ").Append(serviceBusSubscription.ActiveMessageCount)
-                    .Append("\n\tDeadLetterMessageCount: ").Append(serviceBusSubscription.DeadLetterMessageCount)
-                    .Append("\n\tDefaultMessageTtlDuration: ").Append(serviceBusSubscription.DefaultMessageTtlDuration)
-                    .Append("\n\tIsBatchedOperationsEnabled: ").Append(serviceBusSubscription.IsBatchedOperationsEnabled)
-                    .Append("\n\tDeleteOnIdleDurationInMinutes: ").Append(serviceBusSubscription.DeleteOnIdleDurationInMinutes)
-                    .Append("\n\tScheduledMessageCount: ").Append(serviceBusSubscription.ScheduledMessageCount)
-                    .Append("\n\tStatus: ").Append(serviceBusSubscription.Status)
-                    .Append("\n\tTransferMessageCount: ").Append(serviceBusSubscription.TransferMessageCount)
-                    .Append("\n\tIsDeadLetteringEnabledForExpiredMessages: ").Append(serviceBusSubscription.IsDeadLetteringEnabledForExpiredMessages)
-                    .Append("\n\tIsSessionEnabled: ").Append(serviceBusSubscription.IsSessionEnabled)
-                    .Append("\n\tLockDurationInSeconds: ").Append(serviceBusSubscription.LockDurationInSeconds)
-                    .Append("\n\tMaxDeliveryCountBeforeDeadLetteringMessage: ").Append(serviceBusSubscription.MaxDeliveryCountBeforeDeadLetteringMessage)
-                    .Append("\n\tIsDeadLetteringEnabledForFilterEvaluationFailedMessages: ").Append(serviceBusSubscription.IsDeadLetteringEnabledForFilterEvaluationFailedMessages)
-                    .Append("\n\tTransferMessageCount: ").Append(serviceBusSubscription.TransferMessageCount)
-                    .Append("\n\tTransferDeadLetterMessageCount: ").Append(serviceBusSubscription.TransferDeadLetterMessageCount);
-
-            Console.WriteLine(builder.ToString());
-        }
-
-        static void PrintNamespaceAuthorizationRule(INamespaceAuthorizationRule namespaceAuthorizationRule)
-        {
-            StringBuilder builder = new StringBuilder()
-                    .Append("Service bus queue authorization rule: ").Append(namespaceAuthorizationRule.Id)
-                    .Append("\n\tName: ").Append(namespaceAuthorizationRule.Name)
-                    .Append("\n\tResourceGroupName: ").Append(namespaceAuthorizationRule.ResourceGroupName)
-                    .Append("\n\tNamespace Name: ").Append(namespaceAuthorizationRule.NamespaceName);
-
-            var rights = namespaceAuthorizationRule.Rights;
-            builder.Append("\n\tNumber of access rights in queue: ").Append(rights.Count());
-            foreach (var right in rights)
-            {
-                builder.Append("\n\t\tAccessRight: ")
-                        .Append("\n\t\t\tName :").Append(right.ToString());
-            }
-
-            Console.WriteLine(builder.ToString());
-        }
-
-        static void PrintKeys(IAuthorizationKeys keys)
-        {
-            StringBuilder builder = new StringBuilder()
-                    .Append("Authorization keys: ")
-                    .Append("\n\tPrimaryKey: ").Append(keys.PrimaryKey)
-                    .Append("\n\tPrimaryConnectionString: ").Append(keys.PrimaryConnectionString)
-                    .Append("\n\tSecondaryKey: ").Append(keys.SecondaryKey)
-                    .Append("\n\tSecondaryConnectionString: ").Append(keys.SecondaryConnectionString);
-
-            Console.WriteLine(builder.ToString());
         }
     }
 }
+
